@@ -11,8 +11,7 @@ function getExportedFn(name: string): Function | undefined {
   return undefined;
 }
 
-// direct network fallback (if auth module export is missing or build produced no exports)
-const API_BASE = import.meta.env.VITE_Api_URL || '';
+ const API_BASE = import.meta.env.VITE_Api_URL || '';
 async function directRequest(path: string, body: any) {
   const url = `${API_BASE.replace(/\/$/, '')}/${path.replace(/^\/*/, '')}`;
   const res = await fetch(url, {

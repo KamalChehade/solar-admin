@@ -12,6 +12,7 @@ import {
   LogOut,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { isAdmin } from '../types/role';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -22,6 +23,10 @@ interface LayoutProps {
 export const Layout: React.FC<LayoutProps> = ({ children, currentPage, onNavigate }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { user, userRole, signOut } = useAuth();
+
+  // Normalize role values using shared helper
+  const rawRole = (userRole ?? (user as any)?.role) as any;
+  const admin = isAdmin(rawRole);
 
   // layout intentionally does not redirect; AppContent decides whether to show Login
 
@@ -104,7 +109,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentPage, onNavigat
           <div className="mb-3 p-3 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg">
             <p className="text-sm font-medium text-gray-900 truncate">{user?.email}</p>
             <p className="text-xs text-gray-500">
-              {userRole === 'Admin' ? '🛡️ Administrator' : '✍️ Publisher'}
+              {admin ? '🛡️ Administrator' : '✍️ Publisher'}
             </p>
           </div>
           <button
