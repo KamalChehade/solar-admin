@@ -1,103 +1,67 @@
-import React, { useEffect, useState } from 'react';
-import { Mail, Trash2, Eye } from 'lucide-react';
-import { Button } from '../components/ui/Button';
-import { Modal } from '../components/ui/Modal';
-import { Table } from '../components/ui/Table';
-import { useToast } from '../components/ui/Toast';
-import { useLocale } from '../contexts/LocaleContext';
-import { supabase } from '../lib/supabase';
-
-interface ContactMessage {
-  id: string;
-  name: string;
-  email_address: string;
-  subject: string;
-  message: string;
-  date_received: string;
-  is_read: boolean;
-}
+import React, { useEffect, useState } from "react";
+import { Mail, Trash2, Eye } from "lucide-react";
+import { Button } from "../components/ui/Button";
+import { Modal } from "../components/ui/Modal";
+import { Table } from "../components/ui/Table";
+import { useToast } from "../components/ui/Toast";
+import { useLocale } from "../contexts/LocaleContext";
+import useContactMessages from "../hooks/useContactMessages";
 
 export const ContactMessages: React.FC = () => {
-  const [messages, setMessages] = useState<ContactMessage[]>([]);
+  const {
+    messages,
+    loading,
+    fetch,
+    remove,
+    totalPages,
+    currentPage,
+    setCurrentPage,
+  } = useContactMessages();
+
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [selectedMessage, setSelectedMessage] = useState<ContactMessage | null>(null);
-  const [deletingMessage, setDeletingMessage] = useState<ContactMessage | null>(null);
+  const [selectedMessage, setSelectedMessage] = useState<any>(null);
+  const [deletingMessage, setDeletingMessage] = useState<any>(null);
+
   const { showToast } = useToast();
   const { t } = useLocale();
 
   useEffect(() => {
-    fetchMessages();
-  }, []);
+    fetch(currentPage);
+  }, [fetch, currentPage]);
 
-  const fetchMessages = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('contact_messages')
-        .select('*')
-        .order('date_received', { ascending: false });
-
-      if (error) throw error;
-      setMessages(data || []);
-    } catch (error) {
-      showToast('Error fetching messages', 'error');
-    }
-  };
-
-  const handleViewMessage = async (message: ContactMessage) => {
+  const handleViewMessage = (message: any) => {
     setSelectedMessage(message);
     setIsViewModalOpen(true);
-
-    if (!message.is_read) {
-      try {
-        await supabase.from('contact_messages').update({ is_read: true }).eq('id', message.id);
-        fetchMessages();
-      } catch (error) {
-        console.error('Error marking message as read:', error);
-      }
-    }
   };
 
   const handleDelete = async () => {
     if (!deletingMessage) return;
-
     try {
-      const { error } = await supabase.from('contact_messages').delete().eq('id', deletingMessage.id);
-
-      if (error) throw error;
-      showToast('Message deleted successfully', 'success');
+      await remove(deletingMessage.id);
+      showToast("Message deleted successfully", "success");
       setIsDeleteModalOpen(false);
       setDeletingMessage(null);
-      fetchMessages();
     } catch (error) {
-      showToast('Error deleting message', 'error');
+      showToast("Error deleting message", "error");
     }
   };
 
   const columns = [
+    { key: "name", label: "Name" },
+    { key: "email", label: "Email" },
+    { key: "phone", label: "Phone" }, // ✅ NEW COLUMN
+    { key: "subject", label: "Subject" },
     {
-      key: 'is_read',
-      label: '',
-      render: (message: ContactMessage) => (
-        <div className="flex items-center">
-          {!message.is_read && (
-            <div className="w-2 h-2 bg-[#FFD700] rounded-full" title="Unread" />
-          )}
-        </div>
-      ),
-    },
-    { key: 'name', label: 'Name' },
-    { key: 'email_address', label: 'Email' },
-    { key: 'subject', label: 'Subject' },
-    {
-      key: 'date_received',
-      label: 'Date',
-      render: (message: ContactMessage) => new Date(message.date_received).toLocaleDateString(),
+      key: "createdAt",
+      label: "Date",
+      render: (message: any) =>
+        new Date(message.createdAt).toLocaleDateString(),
     },
     {
-      key: 'actions',
-      label: 'Actions',
-      render: (message: ContactMessage) => (
+      key: "actions",
+      label: "Actions",
+      render: (message: any) => (
         <div className="flex gap-2">
           <button
             onClick={(e) => {
@@ -125,26 +89,54 @@ export const ContactMessages: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="p-3 bg-[#0077B6]/10 rounded-lg">
             <Mail className="text-[#0077B6]" size={28} />
           </div>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">{t('contact_messages')}</h1>
+            <h1 className="text-3xl font-bold text-gray-900">
+              {t("contact_messages")}
+            </h1>
             <p className="text-gray-600">View and manage customer inquiries</p>
           </div>
         </div>
       </div>
 
+      {/* Table */}
       <Table
         columns={columns}
         data={messages}
-        keyExtractor={(message) => message.id}
+        keyExtractor={(message) => String(message.id)}
         searchPlaceholder="Search messages..."
         onRowClick={handleViewMessage}
       />
 
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex justify-end gap-2 mt-4">
+          <Button
+            variant="secondary"
+            disabled={currentPage === 1}
+            onClick={() => setCurrentPage((p) => p - 1)}
+          >
+            Prev
+          </Button>
+          <span className="text-gray-700 self-center">
+            Page {currentPage} of {totalPages}
+          </span>
+          <Button
+            variant="secondary"
+            disabled={currentPage === totalPages}
+            onClick={() => setCurrentPage((p) => p + 1)}
+          >
+            Next
+          </Button>
+        </div>
+      )}
+
+      {/* View Modal */}
       <Modal
         isOpen={isViewModalOpen}
         onClose={() => setIsViewModalOpen(false)}
@@ -156,20 +148,37 @@ export const ContactMessages: React.FC = () => {
             <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
               <div>
                 <p className="text-sm text-gray-600">From</p>
-                <p className="font-medium text-gray-900">{selectedMessage.name}</p>
+                <p className="font-medium text-gray-900">
+                  {selectedMessage.name}
+                </p>
               </div>
               <div>
                 <p className="text-sm text-gray-600">Email</p>
-                <p className="font-medium text-gray-900">{selectedMessage.email_address}</p>
+                <p className="font-medium text-gray-900">
+                  {selectedMessage.email}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Phone</p>
+                <p className="font-medium text-gray-900">
+                  <a
+                    href={`tel:${selectedMessage.phone}`}
+                    className="text-[#0077B6] hover:underline"
+                  >
+                    {selectedMessage.phone}
+                  </a>
+                </p>
               </div>
               <div>
                 <p className="text-sm text-gray-600">Subject</p>
-                <p className="font-medium text-gray-900">{selectedMessage.subject}</p>
+                <p className="font-medium text-gray-900">
+                  {selectedMessage.subject}
+                </p>
               </div>
               <div>
                 <p className="text-sm text-gray-600">Date</p>
                 <p className="font-medium text-gray-900">
-                  {new Date(selectedMessage.date_received).toLocaleString()}
+                  {new Date(selectedMessage.createdAt).toLocaleString()}
                 </p>
               </div>
             </div>
@@ -177,7 +186,9 @@ export const ContactMessages: React.FC = () => {
             <div className="space-y-2">
               <p className="text-sm text-gray-600 font-medium">Message</p>
               <div className="p-4 bg-white border border-gray-200 rounded-lg">
-                <p className="text-gray-900 whitespace-pre-wrap">{selectedMessage.message}</p>
+                <p className="text-gray-900 whitespace-pre-wrap">
+                  {selectedMessage.message}
+                </p>
               </div>
             </div>
 
@@ -194,7 +205,10 @@ export const ContactMessages: React.FC = () => {
                 <Trash2 size={18} />
                 Delete
               </Button>
-              <Button variant="secondary" onClick={() => setIsViewModalOpen(false)}>
+              <Button
+                variant="secondary"
+                onClick={() => setIsViewModalOpen(false)}
+              >
                 Close
               </Button>
             </div>
@@ -202,6 +216,7 @@ export const ContactMessages: React.FC = () => {
         )}
       </Modal>
 
+      {/* Delete Modal */}
       <Modal
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
@@ -210,11 +225,15 @@ export const ContactMessages: React.FC = () => {
       >
         <div className="space-y-4">
           <p className="text-gray-600">
-            Are you sure you want to delete this message from <strong>{deletingMessage?.name}</strong>?
-            This action cannot be undone.
+            Are you sure you want to delete this message from{" "}
+            <strong>{deletingMessage?.name}</strong>? This action cannot be
+            undone.
           </p>
           <div className="flex gap-3 justify-end">
-            <Button variant="secondary" onClick={() => setIsDeleteModalOpen(false)}>
+            <Button
+              variant="secondary"
+              onClick={() => setIsDeleteModalOpen(false)}
+            >
               Cancel
             </Button>
             <Button variant="danger" onClick={handleDelete}>
