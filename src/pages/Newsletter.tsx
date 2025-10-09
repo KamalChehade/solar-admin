@@ -5,6 +5,7 @@ import { Input, TextArea } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
 import { Table } from '../components/ui/Table';
 import { useToast } from '../components/ui/Toast';
+import { useLocale } from '../contexts/LocaleContext';
 import { supabase } from '../lib/supabase';
 
 interface Subscriber {
@@ -23,6 +24,7 @@ export const Newsletter: React.FC = () => {
   const [selectedSubscribers, setSelectedSubscribers] = useState<string[]>([]);
   const [emailData, setEmailData] = useState({ subject: '', message: '' });
   const { showToast } = useToast();
+  const { t } = useLocale();
 
   useEffect(() => {
     fetchSubscribers();
@@ -154,7 +156,7 @@ export const Newsletter: React.FC = () => {
             <Users className="text-[#FFC700]" size={28} />
           </div>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Newsletter Subscribers</h1>
+            <h1 className="text-3xl font-bold text-gray-900">{t('newsletter_subscribers')}</h1>
             <p className="text-gray-600">Manage your email list</p>
           </div>
         </div>

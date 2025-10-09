@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useLocale } from '../../contexts/LocaleContext';
 import { ChevronLeft, ChevronRight, Search } from 'lucide-react';
 
 interface Column<T> {
@@ -27,6 +28,7 @@ export function Table<T extends Record<string, any>>({
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
   const itemsPerPage = 10;
+  const { dir } = useLocale();
 
   const filteredData = searchable
     ? data.filter((item) =>
@@ -45,7 +47,10 @@ export function Table<T extends Record<string, any>>({
       {searchable && (
         <div className="mb-4">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+            <Search
+              className={`absolute top-1/2 -translate-y-1/2 text-gray-400 ${dir === 'rtl' ? 'right-3' : 'left-3'}`}
+              size={20}
+            />
             <input
               type="text"
               placeholder={searchPlaceholder}
@@ -54,7 +59,7 @@ export function Table<T extends Record<string, any>>({
                 setSearchQuery(e.target.value);
                 setCurrentPage(1);
               }}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00A86B] focus:border-transparent"
+              className={`w-full ${dir === 'rtl' ? 'pr-10' : 'pl-10'} pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00A86B] focus:border-transparent`}
             />
           </div>
         </div>
@@ -67,7 +72,7 @@ export function Table<T extends Record<string, any>>({
               {columns.map((column) => (
                 <th
                   key={column.key}
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider"
+                  className={`px-6 py-3 ${dir === 'rtl' ? 'text-right' : 'text-left'} text-xs font-medium text-gray-700 uppercase tracking-wider`}
                 >
                   {column.label}
                 </th>
@@ -91,7 +96,7 @@ export function Table<T extends Record<string, any>>({
                   } transition-colors`}
                 >
                   {columns.map((column) => (
-                    <td key={column.key} className="px-6 py-4 text-sm text-gray-900">
+                    <td key={column.key} className={`px-6 py-4 text-sm text-gray-900 ${dir === 'rtl' ? 'text-right' : 'text-left'}`}>
                       {column.render ? column.render(item) : item[column.key]}
                     </td>
                   ))}

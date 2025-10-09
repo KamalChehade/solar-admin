@@ -12,6 +12,7 @@ import {
   LogOut,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useLocale } from '../contexts/LocaleContext';
 import { isAdmin } from '../types/role';
 
 interface LayoutProps {
@@ -23,6 +24,7 @@ interface LayoutProps {
 export const Layout: React.FC<LayoutProps> = ({ children, currentPage, onNavigate }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { user, userRole, signOut } = useAuth();
+  const { lang, setLang, t, dir } = useLocale();
 
   // Normalize role values using shared helper
   const rawRole = (userRole ?? (user as any)?.role) as any;
@@ -31,12 +33,12 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentPage, onNavigat
   // layout intentionally does not redirect; AppContent decides whether to show Login
 
   const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, color: 'text-[#00A86B]' },
-    { id: 'categories', label: 'Categories', icon: FolderOpen, color: 'text-[#0077B6]' },
-    { id: 'articles', label: 'Articles', icon: FileText, color: 'text-[#00A86B]' },
-    { id: 'messages', label: 'Messages', icon: MessageSquare, color: 'text-[#0077B6]' },
-    { id: 'newsletter', label: 'Newsletter', icon: Mail, color: 'text-[#FFD700]' },
-    { id: 'users', label: 'Users', icon: Users, color: 'text-[#FFD700]' },
+    { id: 'dashboard', key: 'dashboard', label: t('dashboard'), icon: LayoutDashboard, color: 'text-[#00A86B]' },
+    { id: 'categories', key: 'categories', label: t('categories'), icon: FolderOpen, color: 'text-[#0077B6]' },
+    { id: 'articles', key: 'articles', label: t('articles'), icon: FileText, color: 'text-[#00A86B]' },
+    { id: 'messages', key: 'messages', label: t('messages'), icon: MessageSquare, color: 'text-[#0077B6]' },
+    { id: 'newsletter', key: 'newsletter', label: t('newsletter'), icon: Mail, color: 'text-[#FFD700]' },
+    { id: 'users', key: 'users', label: t('users'), icon: Users, color: 'text-[#FFD700]' },
   ];
 
   const handleSignOut = async () => {
@@ -48,7 +50,36 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentPage, onNavigat
   };
 
   return (
-    <div className="min-h-screen bg-[#F5F7FA]">
+    <div className="min-h-screen bg-[#F5F7FA]" dir={dir}>
+      {/* Top modern header */}
+      <header className="w-full bg-white shadow-sm fixed top-0 z-50">
+        <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+             
+            
+          </div>
+
+          <div className="flex items-center gap-3">
+            <select
+              aria-label="Language"
+              value={lang}
+              onChange={(e) => setLang(e.target.value as 'en' | 'ar')}
+              className="border rounded-md px-3 py-2"
+            >
+              <option value="en">English</option>
+              <option value="ar">العربية</option>
+            </select>
+        
+            <button
+              className="lg:hidden p-2 hover:bg-gray-100 rounded-lg"
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+            >
+              {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
+          </div>
+        </div>
+      </header>
+
       <div className="lg:hidden fixed top-0 left-0 right-0 bg-white shadow-md z-40 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="p-2 bg-gradient-to-br from-[#FFD700] to-[#FFC700] rounded-lg">
@@ -65,8 +96,8 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentPage, onNavigat
       </div>
 
       <aside
-        className={`fixed top-0 left-0 h-screen w-64 bg-white shadow-xl z-50 transition-transform duration-300 ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        className={`fixed top-0 ${lang === 'ar' ? 'right-0' : 'left-0'} h-screen w-64 bg-white shadow-xl z-50 transition-transform duration-300 ${
+          sidebarOpen ? 'translate-x-0' : (lang === 'ar' ? 'translate-x-full' : '-translate-x-full')
         } lg:translate-x-0`}
       >
         <div className="p-6 border-b border-gray-200">
@@ -117,7 +148,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentPage, onNavigat
             className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
           >
             <LogOut size={18} />
-            <span>Sign Out</span>
+            <span>{t('sign_out')}</span>
           </button>
         </div>
       </aside>
@@ -129,8 +160,8 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentPage, onNavigat
         />
       )}
 
-      <main className="lg:ml-64 min-h-screen">
-        <div className="pt-20 lg:pt-0 p-6 lg:p-8">{children}</div>
+      <main className={`${lang === 'ar' ? 'lg:mr-64' : 'lg:ml-64'} min-h-screen bg-white`}>
+        <div className="pt-20 p-6 lg:p-8 mt-[50px] ">{children}</div>
         <footer className="border-t border-gray-200 bg-white p-6 text-center text-gray-600 text-sm">
           © 2025 Quantum Solar Energy — All rights reserved.
         </footer>

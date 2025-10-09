@@ -7,6 +7,7 @@ import { Table } from '../components/ui/Table';
 import { useToast } from '../components/ui/Toast';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { useLocale } from '../contexts/LocaleContext';
 
 interface CMSUser {
   id: string;
@@ -22,9 +23,12 @@ export const Users: React.FC = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<CMSUser | null>(null);
   const [deletingUser, setDeletingUser] = useState<CMSUser | null>(null);
-  const [formData, setFormData] = useState({ name: '', email: '', role: 'Publisher' as const });
+  const [formData, setFormData] = useState<{ name: string; email: string; role: 'Admin' | 'Publisher' }>(
+    { name: '', email: '', role: 'Publisher' }
+  );
   const { showToast } = useToast();
   const { userRole } = useAuth();
+  const { t } = useLocale();
 
   useEffect(() => {
     if (userRole === 'Admin') {
@@ -42,7 +46,7 @@ export const Users: React.FC = () => {
       if (error) throw error;
       setUsers(data || []);
     } catch (error) {
-      showToast('Error fetching users', 'error');
+      showToast(t('error_fetching_users') || 'Error fetching users', 'error');
     }
   };
 
@@ -57,7 +61,7 @@ export const Users: React.FC = () => {
           .eq('id', editingUser.id);
 
         if (error) throw error;
-        showToast('User updated successfully', 'success');
+  showToast(t('user_updated') || 'User updated successfully', 'success');
       } else {
         const { data: authData, error: authError } = await supabase.auth.signUp({
           email: formData.email,
@@ -84,7 +88,7 @@ export const Users: React.FC = () => {
           if (insertError) throw insertError;
         }
 
-        showToast('User created successfully', 'success');
+  showToast(t('user_created') || 'User created successfully', 'success');
       }
 
       setIsModalOpen(false);
@@ -92,7 +96,7 @@ export const Users: React.FC = () => {
       setFormData({ name: '', email: '', role: 'Publisher' });
       fetchUsers();
     } catch (error: any) {
-      showToast(error.message || 'Error saving user', 'error');
+      showToast(error.message || t('error_saving_user') || 'Error saving user', 'error');
     }
   };
 
@@ -103,12 +107,12 @@ export const Users: React.FC = () => {
       const { error: authError } = await supabase.auth.admin.deleteUser(deletingUser.id);
       if (authError) throw authError;
 
-      showToast('User deleted successfully', 'success');
+  showToast(t('user_deleted') || 'User deleted successfully', 'success');
       setIsDeleteModalOpen(false);
       setDeletingUser(null);
       fetchUsers();
     } catch (error: any) {
-      showToast(error.message || 'Error deleting user', 'error');
+      showToast(error.message || t('error_deleting_user') || 'Error deleting user', 'error');
     }
   };
 
@@ -133,39 +137,42 @@ export const Users: React.FC = () => {
       <div className="flex items-center justify-center h-[50vh]">
         <div className="text-center">
           <Shield size={64} className="text-gray-400 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h2>
-          <p className="text-gray-600">Only administrators can access user management.</p>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">{t('access_denied') || 'Access Denied'}</h2>
+          <p className="text-gray-600">{t('admin_only') || 'Only administrators can access user management.'}</p>
         </div>
       </div>
     );
   }
 
   const columns = [
-    { key: 'name', label: 'Name' },
-    { key: 'email', label: 'Email' },
+    { key: 'name', label: t('name') },
+    { key: 'email', label: t('email') },
     {
       key: 'role',
-      label: 'Role',
-      render: (user: CMSUser) => (
-        <span
-          className={`px-3 py-1 rounded-md text-sm font-medium ${
-            user.role === 'Admin'
-              ? 'bg-[#FFD700]/20 text-[#FFC700]'
-              : 'bg-[#0077B6]/10 text-[#0077B6]'
-          }`}
-        >
-          {user.role}
-        </span>
-      ),
+        label: t('role'),
+        render: (user: CMSUser) => {
+          const roleLabel = user.role === 'Admin' ? (t('admin') || 'Admin') : (t('publisher') || 'Publisher');
+          return (
+            <span
+              className={`px-3 py-1 rounded-md text-sm font-medium ${
+                user.role === 'Admin'
+                  ? 'bg-[#FFD700]/20 text-[#FFC700]'
+                  : 'bg-[#0077B6]/10 text-[#0077B6]'
+              }`}
+            >
+              {roleLabel}
+            </span>
+          );
+        },
     },
     {
       key: 'created_at',
-      label: 'Created',
+      label: t('created'),
       render: (user: CMSUser) => new Date(user.created_at).toLocaleDateString(),
     },
     {
       key: 'actions',
-      label: 'Actions',
+        label: t('actions') || 'Actions',
       render: (user: CMSUser) => (
         <div className="flex gap-2">
           <button
@@ -200,13 +207,13 @@ export const Users: React.FC = () => {
             <UserCircle className="text-[#FFC700]" size={28} />
           </div>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Users Management</h1>
-            <p className="text-gray-600">Manage admin and publisher accounts</p>
+            <h1 className="text-3xl font-bold text-gray-900">{t('users_management')}</h1>
+              <p className="text-gray-600">Manage admin and publisher accounts</p>
           </div>
         </div>
         <Button onClick={openCreateModal} className="gap-2">
           <Plus size={20} />
-          Add User
+          {t('add_user')}
         </Button>
       </div>
 
@@ -214,23 +221,23 @@ export const Users: React.FC = () => {
         columns={columns}
         data={users}
         keyExtractor={(user) => user.id}
-        searchPlaceholder="Search users..."
+    searchPlaceholder={t('search_users') || 'Search users...'}
       />
 
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={editingUser ? 'Edit User' : 'Add User'}
+        title={editingUser ? (t('edit_user') || 'Edit User') : (t('add_user') || 'Add User')}
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input
-            label="Name"
+            label={t('name') || 'Name'}
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             required
           />
           <Input
-            label="Email"
+            label={t('email') || 'Email'}
             type="email"
             value={formData.email}
             onChange={(e) => setFormData({ ...formData, email: e.target.value })}
@@ -238,21 +245,21 @@ export const Users: React.FC = () => {
             disabled={!!editingUser}
           />
           <Select
-            label="Role"
+            label={t('role') || 'Role'}
             value={formData.role}
             onChange={(e) =>
               setFormData({ ...formData, role: e.target.value as 'Admin' | 'Publisher' })
             }
             options={[
-              { value: 'Publisher', label: 'Publisher' },
-              { value: 'Admin', label: 'Admin' },
+              { value: 'Publisher', label: t('publisher') || 'Publisher' },
+              { value: 'Admin', label: t('admin') || 'Admin' },
             ]}
           />
           <div className="flex gap-3 justify-end pt-4">
             <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)}>
-              Cancel
+              {t('cancel') || 'Cancel'}
             </Button>
-            <Button type="submit">{editingUser ? 'Update' : 'Create'}</Button>
+            <Button type="submit">{editingUser ? (t('update') || 'Update') : (t('create') || 'Create')}</Button>
           </div>
         </form>
       </Modal>
@@ -260,20 +267,19 @@ export const Users: React.FC = () => {
       <Modal
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
-        title="Delete User"
+        title={t('delete_user') || 'Delete User'}
         size="sm"
       >
         <div className="space-y-4">
           <p className="text-gray-600">
-            Are you sure you want to delete <strong>{deletingUser?.name}</strong>? This will
-            permanently remove their account and all associated data.
+            {t('are_you_sure_delete') || 'Are you sure you want to delete'} <strong>{deletingUser?.name}</strong>? {t('will_permanently_remove') || 'This will permanently remove their account and all associated data.'}
           </p>
           <div className="flex gap-3 justify-end">
             <Button variant="secondary" onClick={() => setIsDeleteModalOpen(false)}>
-              Cancel
+              {t('cancel') || 'Cancel'}
             </Button>
             <Button variant="danger" onClick={handleDelete}>
-              Delete
+              {t('delete') || 'Delete'}
             </Button>
           </div>
         </div>

@@ -4,6 +4,7 @@ import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
 import { Table } from '../components/ui/Table';
 import { useToast } from '../components/ui/Toast';
+import { useLocale } from '../contexts/LocaleContext';
 import { supabase } from '../lib/supabase';
 
 interface ContactMessage {
@@ -23,6 +24,7 @@ export const ContactMessages: React.FC = () => {
   const [selectedMessage, setSelectedMessage] = useState<ContactMessage | null>(null);
   const [deletingMessage, setDeletingMessage] = useState<ContactMessage | null>(null);
   const { showToast } = useToast();
+  const { t } = useLocale();
 
   useEffect(() => {
     fetchMessages();
@@ -129,7 +131,7 @@ export const ContactMessages: React.FC = () => {
             <Mail className="text-[#0077B6]" size={28} />
           </div>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Contact Messages</h1>
+            <h1 className="text-3xl font-bold text-gray-900">{t('contact_messages')}</h1>
             <p className="text-gray-600">View and manage customer inquiries</p>
           </div>
         </div>

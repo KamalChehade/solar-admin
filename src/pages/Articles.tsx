@@ -1,221 +1,203 @@
-import React, { useEffect, useState } from 'react';
-import { Plus, Edit, Trash2, FileText, Image as ImageIcon, Video } from 'lucide-react';
+import React, { useState } from 'react';
+import { Plus, Edit, Trash2, FileText } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Input, TextArea, Select } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
 import { Table } from '../components/ui/Table';
 import { useToast } from '../components/ui/Toast';
-import { supabase } from '../lib/supabase';
-import { useAuth } from '../contexts/AuthContext';
-
-interface Article {
-  id: string;
-  title: string;
-  excerpt: string;
-  content: string;
-  cover_image: string;
-  video_url: string;
-  author: string;
-  category_id: string | null;
-  tags: string[];
-  published_date: string;
-  created_by_user_id: string | null;
-}
-
-interface Category {
-  id: string;
-  name: string;
-}
+import { useLocale } from '../contexts/LocaleContext';
+import translate from '../api/translate';
+import useArticles from '../hooks/useArticles';
+import useCategories from '../hooks/useCategories';
+import type { Article as ArticleType } from '../types/article';
 
 export const Articles: React.FC = () => {
-  const [articles, setArticles] = useState<Article[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
+  const { articles, fetch, create, update, remove } = useArticles();
+  const { categories } = useCategories();
+  const { showToast } = useToast();
+  const { t, lang } = useLocale();
+  const primaryLang = (lang as 'en' | 'ar') || 'en';
+  const secondaryLang = primaryLang === 'en' ? 'ar' : 'en';
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [editingArticle, setEditingArticle] = useState<Article | null>(null);
-  const [deletingArticle, setDeletingArticle] = useState<Article | null>(null);
-  const [formData, setFormData] = useState({
-    title: '',
-    excerpt: '',
-    content: '',
-    cover_image: '',
-    video_url: '',
-    author: '',
-    category_id: '',
-    tags: '',
-    published_date: new Date().toISOString().split('T')[0],
-  });
-  const { showToast } = useToast();
-  const { user } = useAuth();
+  const [editingArticle, setEditingArticle] = useState<ArticleType | null>(null);
+  const [deletingArticle, setDeletingArticle] = useState<ArticleType | null>(null);
+  const [isTransModalOpen, setIsTransModalOpen] = useState(false);
+  const [isTranslating, setIsTranslating] = useState(false);
 
-  useEffect(() => {
-    fetchArticles();
-    fetchCategories();
-  }, []);
+  // primary language form
+  const [title, setTitle] = useState('');
+  const [excerpt, setExcerpt] = useState('');
+  const [content, setContent] = useState('');
+  const [author, setAuthor] = useState('');
+  const [categoryId, setCategoryId] = useState<number | ''>('');
+  const [publishedDate, setPublishedDate] = useState('');
+  const [readingTime, setReadingTime] = useState<number | ''>('');
 
-  const fetchArticles = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('articles')
-        .select('*')
-        .order('published_date', { ascending: false });
+  // secondary language form (auto-populated)
+  const [sTitle, setSTitle] = useState('');
+  const [sExcerpt, setSExcerpt] = useState('');
+  const [sContent, setSContent] = useState('');
 
-      if (error) throw error;
-      setArticles(data || []);
-    } catch (error) {
-      showToast('Error fetching articles', 'error');
-    }
+  const [isSaving, setIsSaving] = useState(false);
+
+  const openCreateModal = () => {
+    setEditingArticle(null);
+    setTitle('');
+    setExcerpt('');
+    setContent('');
+    setAuthor('');
+    setCategoryId('');
+    setPublishedDate('');
+    setReadingTime('');
+    setIsModalOpen(true);
   };
 
-  const fetchCategories = async () => {
-    try {
-      const { data, error } = await supabase.from('categories').select('id, name');
-
-      if (error) throw error;
-      setCategories(data || []);
-    } catch (error) {
-      console.error('Error fetching categories:', error);
-    }
+  const openEditModal = (article: ArticleType) => {
+    setEditingArticle(article);
+    const tr = (article.translations || []).find((t) => t.lang === primaryLang) || (article.translations || [])[0];
+    setTitle(tr?.title || '');
+    setExcerpt(tr?.excerpt || '');
+    setContent(tr?.content || '');
+    setAuthor(article.author || '');
+    setCategoryId(article.categoryId || '');
+    setPublishedDate(article.published_date ? article.published_date.split('T')[0] : '');
+    setReadingTime(article.reading_time || '');
+    setIsModalOpen(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    const tags = formData.tags
-      .split(',')
-      .map((tag) => tag.trim())
-      .filter((tag) => tag);
-
-    const articleData = {
-      ...formData,
-      tags,
-      category_id: formData.category_id || null,
-      created_by_user_id: user?.id || null,
-    };
-
+    setIsSaving(true);
     try {
+      const translations = [{ lang: primaryLang, title, excerpt, content }];
+      const payload: any = { translations, author, categoryId, published_date: publishedDate || null, reading_time: readingTime || null };
+
       if (editingArticle) {
-        const { error } = await supabase
-          .from('articles')
-          .update(articleData)
-          .eq('id', editingArticle.id);
+        const existingSecondary = (editingArticle.translations || []).find((tr) => tr.lang !== primaryLang);
+        if (existingSecondary) translations.push({ lang: existingSecondary.lang, title: existingSecondary.title, excerpt: existingSecondary.excerpt, content: existingSecondary.content });
+        await update(Number(editingArticle.id), payload);
+        showToast(t('article_updated') || 'Article updated', 'success');
 
-        if (error) throw error;
-        showToast('Article updated successfully', 'success');
+        setIsModalOpen(false);
+        setIsTransModalOpen(true);
+        setSTitle(existingSecondary?.title || '');
+        setSExcerpt(existingSecondary?.excerpt || '');
+        setSContent(existingSecondary?.content || '');
+
+        (async () => {
+          setIsTranslating(true);
+          try {
+            const t1 = await translate(title, primaryLang, secondaryLang);
+            const t2 = await translate(excerpt, primaryLang, secondaryLang);
+            const t3 = await translate(content, primaryLang, secondaryLang);
+            if (t1) setSTitle(t1);
+            if (t2) setSExcerpt(t2);
+            if (t3) setSContent(t3);
+            await update(Number(editingArticle.id), { translations: [{ lang: primaryLang, title, excerpt, content }, { lang: secondaryLang, title: t1 || existingSecondary?.title, excerpt: t2 || existingSecondary?.excerpt, content: t3 || existingSecondary?.content }] });
+            showToast(t('translation_saved') || 'Translation saved', 'success');
+          } catch (err) {
+            console.warn('Auto-translate failed', err);
+          } finally {
+            setIsTranslating(false);
+          }
+        })();
       } else {
-        const { error } = await supabase.from('articles').insert([articleData]);
+        const created = await create(payload);
+        showToast(t('article_created') || 'Article created', 'success');
+        if (created && (created as any).id) {
+          setEditingArticle(created as any);
+          setIsModalOpen(false);
+          setIsTransModalOpen(true);
+          setSTitle('');
+          setSExcerpt('');
+          setSContent('');
 
-        if (error) throw error;
-        showToast('Article created successfully', 'success');
+          (async () => {
+            setIsTranslating(true);
+            try {
+              const t1 = await translate(title, primaryLang, secondaryLang);
+              const t2 = await translate(excerpt, primaryLang, secondaryLang);
+              const t3 = await translate(content, primaryLang, secondaryLang);
+              if (t1) setSTitle(t1);
+              if (t2) setSExcerpt(t2);
+              if (t3) setSContent(t3);
+              await update(Number((created as any).id), { translations: [{ lang: primaryLang, title, excerpt, content }, { lang: secondaryLang, title: t1, excerpt: t2, content: t3 }] });
+              showToast(t('translation_saved') || 'Translation saved', 'success');
+            } catch (err) {
+              console.warn('Auto-translate after create failed', err);
+            } finally {
+              setIsTranslating(false);
+            }
+          })();
+        }
       }
 
-      setIsModalOpen(false);
+      setIsSaving(false);
+    } catch (err) {
+      setIsSaving(false);
+      showToast(t('error_saving_article') || 'Error saving article', 'error');
+    }
+  };
+
+  const confirmSave = async () => {
+    setIsSaving(true);
+    try {
+      if (!editingArticle) {
+        const translations = [{ lang: primaryLang, title, excerpt, content }];
+        if (sTitle || sExcerpt || sContent) translations.push({ lang: secondaryLang, title: sTitle, excerpt: sExcerpt, content: sContent });
+        await create({ translations, author, categoryId, published_date: publishedDate || null, reading_time: readingTime || null });
+      } else {
+        const payload = { translations: [{ lang: primaryLang, title, excerpt, content }, { lang: secondaryLang, title: sTitle, excerpt: sExcerpt, content: sContent }] };
+        await update(Number(editingArticle.id), payload);
+      }
+
+      setIsTransModalOpen(false);
       setEditingArticle(null);
-      resetForm();
-      fetchArticles();
-    } catch (error) {
-      showToast('Error saving article', 'error');
+      setTitle('');
+      setExcerpt('');
+      setContent('');
+      setSTitle('');
+      setSExcerpt('');
+      setSContent('');
+      await fetch();
+      showToast(t('saved') || 'Saved', 'success');
+    } catch (err) {
+      showToast(t('error_saving') || 'Error saving', 'error');
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const handleDelete = async () => {
     if (!deletingArticle) return;
-
     try {
-      const { error } = await supabase.from('articles').delete().eq('id', deletingArticle.id);
-
-      if (error) throw error;
-      showToast('Article deleted successfully', 'success');
+      await remove(Number(deletingArticle.id));
+      showToast(t('article_deleted') || 'Article deleted', 'success');
       setIsDeleteModalOpen(false);
       setDeletingArticle(null);
-      fetchArticles();
-    } catch (error) {
-      showToast('Error deleting article', 'error');
+    } catch (err) {
+      showToast(t('error_deleting') || 'Error deleting', 'error');
     }
   };
 
-  const resetForm = () => {
-    setFormData({
-      title: '',
-      excerpt: '',
-      content: '',
-      cover_image: '',
-      video_url: '',
-      author: '',
-      category_id: '',
-      tags: '',
-      published_date: new Date().toISOString().split('T')[0],
-    });
-  };
-
-  const openEditModal = (article: Article) => {
-    setEditingArticle(article);
-    setFormData({
-      title: article.title,
-      excerpt: article.excerpt,
-      content: article.content,
-      cover_image: article.cover_image,
-      video_url: article.video_url,
-      author: article.author,
-      category_id: article.category_id || '',
-      tags: article.tags.join(', '),
-      published_date: article.published_date.split('T')[0],
-    });
-    setIsModalOpen(true);
-  };
-
-  const openCreateModal = () => {
-    setEditingArticle(null);
-    resetForm();
-    setIsModalOpen(true);
-  };
-
-  const getCategoryName = (categoryId: string | null) => {
-    const category = categories.find((cat) => cat.id === categoryId);
-    return category?.name || 'Uncategorized';
-  };
-
   const columns = [
-    { key: 'title', label: 'Title' },
     {
-      key: 'category_id',
-      label: 'Category',
-      render: (article: Article) => (
-        <span className="px-2 py-1 bg-[#00A86B]/10 text-[#00A86B] rounded-md text-sm">
-          {getCategoryName(article.category_id)}
-        </span>
-      ),
+      key: 'title',
+      label: t('title'),
+      render: (a: ArticleType) => (a.translations?.find((tr) => tr.lang === lang)?.title || a.translations?.[0]?.title || '-'),
     },
-    { key: 'author', label: 'Author' },
-    {
-      key: 'published_date',
-      label: 'Published',
-      render: (article: Article) => new Date(article.published_date).toLocaleDateString(),
-    },
+    { key: 'author', label: t('author'), render: (a: ArticleType) => a.author || '-' },
+    { key: 'category', label: t('category'), render: (a: ArticleType) => String(a.categoryId || '-') },
+    { key: 'published', label: t('published'), render: (a: ArticleType) => (a.published_date ? new Date(a.published_date).toLocaleDateString() : '-') },
     {
       key: 'actions',
-      label: 'Actions',
-      render: (article: Article) => (
+      label: t('actions'),
+      render: (a: ArticleType) => (
         <div className="flex gap-2">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              openEditModal(article);
-            }}
-            className="p-2 text-[#0077B6] hover:bg-[#0077B6]/10 rounded-lg transition-colors"
-          >
-            <Edit size={18} />
-          </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setDeletingArticle(article);
-              setIsDeleteModalOpen(true);
-            }}
-            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-          >
-            <Trash2 size={18} />
-          </button>
+          <button onClick={(e) => { e.stopPropagation(); openEditModal(a); }} className="p-2 text-[#0077B6] hover:bg-[#0077B6]/10 rounded-lg transition-colors"><Edit size={18} /></button>
+          <button onClick={(e) => { e.stopPropagation(); setDeletingArticle(a); setIsDeleteModalOpen(true); }} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Trash2 size={18} /></button>
         </div>
       ),
     },
@@ -225,146 +207,59 @@ export const Articles: React.FC = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="p-3 bg-[#0077B6]/10 rounded-lg">
-            <FileText className="text-[#0077B6]" size={28} />
-          </div>
+          <div className="p-3 bg-[#00A86B]/10 rounded-lg"><FileText className="text-[#00A86B]" size={28} /></div>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Articles</h1>
-            <p className="text-gray-600">Manage your content</p>
+            <h1 className="text-3xl font-bold text-gray-900">{t('articles')}</h1>
+            <p className="text-gray-600">{t('manage_your_content')}</p>
           </div>
         </div>
-        <Button onClick={openCreateModal} className="gap-2">
-          <Plus size={20} />
-          Add Article
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button onClick={openCreateModal} className="gap-2"><Plus size={20} />{t('add_article')}</Button>
+        </div>
       </div>
 
-      <Table
-        columns={columns}
-        data={articles}
-        keyExtractor={(article) => article.id}
-        searchPlaceholder="Search articles..."
-      />
+      <Table columns={columns} data={articles} keyExtractor={(a) => String((a as any).id)} searchPlaceholder={t('search_articles') || 'Search articles...'} />
 
-      <Modal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title={editingArticle ? 'Edit Article' : 'Add Article'}
-        size="xl"
-      >
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingArticle ? (t('edit_article') || 'Edit Article') : (t('add_article') || 'Add Article')}>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Input
-              label="Title"
-              value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              required
-            />
-            <Input
-              label="Author"
-              value={formData.author}
-              onChange={(e) => setFormData({ ...formData, author: e.target.value })}
-              required
-            />
-          </div>
-
-          <TextArea
-            label="Excerpt"
-            value={formData.excerpt}
-            onChange={(e) => setFormData({ ...formData, excerpt: e.target.value })}
-            rows={3}
-          />
-
-          <TextArea
-            label="Content"
-            value={formData.content}
-            onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-            rows={8}
-            required
-          />
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Select
-              label="Category"
-              value={formData.category_id}
-              onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
-              options={[
-                { value: '', label: 'Select Category' },
-                ...categories.map((cat) => ({ value: cat.id, label: cat.name })),
-              ]}
-            />
-            <Input
-              label="Published Date"
-              type="date"
-              value={formData.published_date}
-              onChange={(e) => setFormData({ ...formData, published_date: e.target.value })}
-              required
-            />
-          </div>
-
-          <Input
-            label="Tags (comma-separated)"
-            value={formData.tags}
-            onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
-            placeholder="solar, energy, technology"
-          />
-
-          <div className="border-t pt-4 space-y-4">
-            <h3 className="font-medium text-gray-900 flex items-center gap-2">
-              <ImageIcon size={20} />
-              Media
-            </h3>
-            <Input
-              label="Cover Image URL"
-              value={formData.cover_image}
-              onChange={(e) => setFormData({ ...formData, cover_image: e.target.value })}
-              placeholder="https://example.com/image.jpg"
-            />
-            {formData.cover_image && (
-              <img
-                src={formData.cover_image}
-                alt="Preview"
-                className="w-full h-48 object-cover rounded-lg"
-              />
-            )}
-            <Input
-              label="Video URL (YouTube)"
-              value={formData.video_url}
-              onChange={(e) => setFormData({ ...formData, video_url: e.target.value })}
-              placeholder="https://youtube.com/watch?v=..."
-            />
-          </div>
-
-          <div className="flex gap-3 justify-end pt-4 border-t">
-            <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button type="submit">{editingArticle ? 'Update' : 'Create'}</Button>
+          <Input label={t('title') || 'Title'} value={title} onChange={(e) => setTitle(e.target.value)} required />
+          <Input label={t('author') || 'Author'} value={author} onChange={(e) => setAuthor(e.target.value)} />
+          <Select label={t('category') || 'Category'} value={String(categoryId)} onChange={(e) => setCategoryId(Number(e.target.value))} options={categories.map((c) => ({ value: String((c as any).id), label: c.translations?.find((tr: any) => tr.lang === lang)?.name || c.translations?.[0]?.name || 'Category' }))} />
+          <Input label={t('published') || 'Published'} type="date" value={publishedDate} onChange={(e) => setPublishedDate(e.target.value)} />
+          <Input label={t('reading_time') || 'Reading time (mins)'} type="number" value={String(readingTime)} onChange={(e) => setReadingTime(Number(e.target.value))} />
+          <TextArea label={t('excerpt') || 'Excerpt'} value={excerpt} onChange={(e) => setExcerpt(e.target.value)} />
+          <TextArea label={t('content') || 'Content'} value={content} onChange={(e) => setContent(e.target.value)} />
+          <div className="flex gap-3 justify-end pt-4">
+            <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)}>{t('cancel') || 'Cancel'}</Button>
+            <Button type="submit" disabled={isSaving}>{isSaving ? (t('saving') || 'Saving...') : (editingArticle ? (t('update') || 'Update') : (t('create') || 'Create'))}</Button>
           </div>
         </form>
       </Modal>
 
-      <Modal
-        isOpen={isDeleteModalOpen}
-        onClose={() => setIsDeleteModalOpen(false)}
-        title="Delete Article"
-        size="sm"
-      >
+      <Modal isOpen={isTransModalOpen} onClose={() => { setIsTransModalOpen(false); setIsModalOpen(true); }} title={(t('confirm_translation') || 'Confirm') + ' ' + (secondaryLang === 'ar' ? (t('arabic') || 'Arabic') : (t('english') || 'English')) + ' ' + (t('translation') || 'Translation')}>
         <div className="space-y-4">
-          <p className="text-gray-600">
-            Are you sure you want to delete <strong>{deletingArticle?.title}</strong>? This action cannot
-            be undone.
-          </p>
+          <p className="text-gray-600">{(t('auto_translated_name') || 'Auto-translated {lang} name. Please confirm or edit before saving.').replace('{lang}', secondaryLang === 'ar' ? (t('arabic') || 'Arabic') : (t('english') || 'English'))}</p>
+          <Input label={secondaryLang === 'ar' ? (t('arabic_title') || 'Arabic Title') : (t('english_title') || 'English Title')} value={sTitle} onChange={(e) => setSTitle(e.target.value)} disabled={isTranslating} />
+          <TextArea label={secondaryLang === 'ar' ? (t('arabic_excerpt') || 'Arabic Excerpt') : (t('english_excerpt') || 'English Excerpt')} value={sExcerpt} onChange={(e) => setSExcerpt(e.target.value)} disabled={isTranslating} />
+          <TextArea label={secondaryLang === 'ar' ? (t('arabic_content') || 'Arabic Content') : (t('english_content') || 'English Content')} value={sContent} onChange={(e) => setSContent(e.target.value)} disabled={isTranslating} />
+          <div className="flex gap-3 justify-end pt-4">
+            <Button variant="secondary" onClick={() => { setIsTransModalOpen(false); setIsModalOpen(true); }}>{t('back') || 'Back'}</Button>
+            <Button onClick={confirmSave} disabled={isSaving || isTranslating || !(sTitle.trim() || sExcerpt.trim() || sContent.trim())}>{isSaving ? (t('saving') || 'Saving...') : (isTranslating ? (t('translating') || 'Translating...') : (t('save') || 'Save'))}</Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} title={t('delete') || 'Delete'} size="sm">
+        <div className="space-y-4">
+          <p className="text-gray-600">{t('are_you_sure_delete') || 'Are you sure you want to delete'} <strong>{deletingArticle?.translations?.find((tr) => tr.lang === lang)?.title || deletingArticle?.translations?.[0]?.title || '-'}</strong>?</p>
           <div className="flex gap-3 justify-end">
-            <Button variant="secondary" onClick={() => setIsDeleteModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button variant="danger" onClick={handleDelete}>
-              Delete
-            </Button>
+            <Button variant="secondary" onClick={() => setIsDeleteModalOpen(false)}>{t('cancel') || 'Cancel'}</Button>
+            <Button variant="danger" onClick={handleDelete}>{t('delete') || 'Delete'}</Button>
           </div>
         </div>
       </Modal>
     </div>
   );
 };
+
+export default Articles;

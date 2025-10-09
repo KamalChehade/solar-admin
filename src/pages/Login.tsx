@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { Sun, Mail, Lock, Zap } from 'lucide-react';
 import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/ui/Toast';
+import { useLocale } from '../contexts/LocaleContext';
 
 export const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -11,6 +11,7 @@ export const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const { signIn } = useAuth();
   const { showToast } = useToast();
+  const { t } = useLocale();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,7 +52,7 @@ export const Login: React.FC = () => {
               <span className="font-medium">Welcome back!</span>
             </div>
             <p className="text-xs text-gray-600 mt-1">
-              Sign in to manage your solar energy content and reach more customers.
+          {t('manage_your_content')}
             </p>
           </div>
 
@@ -91,7 +92,7 @@ export const Login: React.FC = () => {
               disabled={loading}
               className="w-full py-3 text-lg font-medium shadow-lg hover:shadow-xl"
             >
-              {loading ? 'Signing in...' : 'Sign In'}
+            {loading ? t('sign_in') + '...' : t('sign_in')}
             </Button>
           </form>
 

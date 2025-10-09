@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ToastProvider } from './components/ui/Toast';
+import { LocaleProvider } from './contexts/LocaleContext';
 import { Layout } from './components/Layout';
 import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
@@ -58,7 +59,9 @@ function App() {
   return (
     <AuthProvider>
       <ToastProvider>
-        <AppContent />
+        <LocaleProvider>
+          <AppContent />
+        </LocaleProvider>
       </ToastProvider>
     </AuthProvider>
   );
