@@ -8,11 +8,18 @@ export default function useCategories() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
-  const fetch = useCallback(async (limit = 2000000000, offset = 0) => {
+  const lastParams = { limit: 2000000000, offset: 0 } as { limit: number; offset: number };
+
+  const fetch = useCallback(async (limit?: number, offset?: number) => {
+    const l = typeof limit === 'number' ? limit : lastParams.limit;
+    const o = typeof offset === 'number' ? offset : lastParams.offset;
+    lastParams.limit = l;
+    lastParams.offset = o;
+
     setLoading(true);
     setError(null);
     try {
-      const res: CategoryListResult = await categoriesApi.list(limit, offset);
+      const res: CategoryListResult = await categoriesApi.list(l, o);
       setCategories(res.rows || []);
       setCount(res.count || 0);
       return res;

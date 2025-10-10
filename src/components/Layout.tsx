@@ -163,7 +163,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentPage, onNavigat
       <main className={`${lang === 'ar' ? 'lg:mr-64' : 'lg:ml-64'} min-h-screen bg-white`}>
         <div className="pt-20 p-6 lg:p-8 mt-[50px] ">{children}</div>
         <footer className="border-t border-gray-200 bg-white p-6 text-center text-gray-600 text-sm">
-          © 2025 Quantum Solar Energy — All rights reserved.
+          © 2025 Quantum Trading co — All rights reserved.
         </footer>
       </main>
     </div>

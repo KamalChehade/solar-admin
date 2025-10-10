@@ -10,7 +10,7 @@ export default function useContactMessages() {
   const [count, setCount] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
-  const [perPage, setPerPage] = useState(10);
+  const [perPage, setPerPage] = useState(5);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 

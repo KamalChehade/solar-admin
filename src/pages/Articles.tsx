@@ -19,7 +19,10 @@ const toIsoIfDate = (d?: string) => {
 };
 
 export const Articles: React.FC = () => {
-  const { articles, fetch, create, update, remove } = useArticles();
+  const { articles, count, fetch, create, update, remove } = useArticles();
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(5);
+  const totalPages = Math.max(1, Math.ceil((count || 0) / perPage));
   const { categories } = useCategories();
   const { user } = useAuth();
   const { showToast } = useToast();
@@ -85,13 +88,20 @@ export const Articles: React.FC = () => {
     setIsModalOpen(true);
   };
 
+  // handle pagination fetch
+  const loadPage = async (p: number, pp: number) => {
+    const pageNum = Math.max(1, Math.floor(p));
+    setPage(pageNum);
+    await fetch(pp, (pageNum - 1) * pp);
+  };
+
   // cleanup blob object URLs when modal closes or component unmounts
   useEffect(() => {
     return () => {
       if (coverImagePreview && coverImagePreview.startsWith('blob:')) {
         try {
           URL.revokeObjectURL(coverImagePreview);
-        } catch {}
+        } catch { }
       }
     };
   }, [coverImagePreview]);
@@ -102,12 +112,18 @@ export const Articles: React.FC = () => {
       if (coverImagePreview && coverImagePreview.startsWith('blob:')) {
         try {
           URL.revokeObjectURL(coverImagePreview);
-        } catch {}
+        } catch { }
         setCoverImagePreview(null);
         setCoverImageFile(null);
       }
     }
   }, [isModalOpen]);
+
+  // watch perPage/page changes to load data
+  useEffect(() => {
+    loadPage(page, perPage);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [perPage]);
 
   const openEditModal = (article: ArticleType) => {
     setEditingArticle(article);
@@ -159,6 +175,15 @@ export const Articles: React.FC = () => {
       const translations = [
         { lang: primaryLang, title: cleanTitle, excerpt: cleanExcerpt, content: cleanContent, author: cleanAuthor },
       ];
+      if (sTitle.trim() || sExcerpt.trim() || sContent.trim() || sAuthor.trim()) {
+        translations.push({
+          lang: secondaryLang,
+          title: sTitle.trim(),
+          excerpt: sExcerpt.trim(),
+          content: sContent.trim(),
+          author: sAuthor.trim(),
+        });
+      }
 
       const payload: any = {
         translations,
@@ -422,7 +447,15 @@ export const Articles: React.FC = () => {
     {
       key: 'category',
       label: t('category'),
-      render: (a: ArticleType) => String(a.categoryId || '-'),
+      render: (a: ArticleType) => {
+        const cat = categories.find((c: any) => Number(c.id) === Number(a.categoryId));
+        if (!cat) return String(a.categoryId || '-');
+        return (
+          cat.translations?.find((tr: any) => tr.lang === lang)?.name ||
+          cat.translations?.[0]?.name ||
+          String(a.categoryId || '-')
+        );
+      },
     },
     {
       key: 'published',
@@ -482,6 +515,40 @@ export const Articles: React.FC = () => {
         keyExtractor={(a) => String(a.id)}
         searchPlaceholder={t('search_articles') || 'Search articles...'}
       />
+
+      {/* Pagination controls */}
+      <div className="flex items-center justify-between mt-4">
+        <div className="flex items-center gap-2">
+          <label className="text-sm text-gray-600">{t('items_per_page') || 'Items per page'}</label>
+          <select
+            value={perPage}
+            onChange={(e) => setPerPage(Number(e.target.value))}
+            className="border rounded p-1"
+          >
+            {[5, 10, 20, 50, 100].map((n) => (
+              <option key={n} value={n}>{n}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            className="px-3 py-1 border rounded disabled:opacity-50"
+            onClick={() => loadPage(page - 1, perPage)}
+            disabled={page <= 1}
+          >
+            {t('prev') || 'Prev'}
+          </button>
+          <div className="text-sm text-gray-700">{t('page') || 'Page'} {page} / {totalPages}</div>
+          <button
+            className="px-3 py-1 border rounded disabled:opacity-50"
+            onClick={() => loadPage(page + 1, perPage)}
+            disabled={page >= totalPages}
+          >
+            {t('next') || 'Next'}
+          </button>
+        </div>
+      </div>
 
       {/* Main Article Modal */}
       <Modal

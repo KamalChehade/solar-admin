@@ -11,7 +11,10 @@ import useCategories from '../hooks/useCategories';
 import type { Category as CategoryType } from '../types/category';
 
 export const Categories: React.FC = () => {
-  const { categories, fetch, create, update, remove } = useCategories();
+  const { categories, count, fetch, create, update, remove } = useCategories();
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(5);
+  const totalPages = Math.max(1, Math.ceil((count || 0) / perPage));
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<CategoryType | null>(null);
@@ -217,6 +220,18 @@ export const Categories: React.FC = () => {
     setIsModalOpen(true);
   };
 
+  const loadPage = async (p: number, pp: number) => {
+    const pageNum = Math.max(1, Math.floor(p));
+    setPage(pageNum);
+    await fetch(pp, (pageNum - 1) * pp);
+  };
+
+  // refresh when perPage changes
+  React.useEffect(() => {
+    loadPage(page, perPage);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [perPage]);
+
   const columns = [
     {
       key: 'name',
@@ -290,6 +305,40 @@ export const Categories: React.FC = () => {
         keyExtractor={(cat) => String((cat as any).id)}
         searchPlaceholder={t('search_categories') || 'Search categories...'}
       />
+
+      {/* Pagination controls */}
+      <div className="flex items-center justify-between mt-4">
+        <div className="flex items-center gap-2">
+          <label className="text-sm text-gray-600">{t('items_per_page') || 'Items per page'}</label>
+          <select
+            value={perPage}
+            onChange={(e) => setPerPage(Number(e.target.value))}
+            className="border rounded p-1"
+          >
+            {[5, 10, 20, 50, 100].map((n) => (
+              <option key={n} value={n}>{n}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            className="px-3 py-1 border rounded disabled:opacity-50"
+            onClick={() => loadPage(page - 1, perPage)}
+            disabled={page <= 1}
+          >
+            {t('prev') || 'Prev'}
+          </button>
+          <div className="text-sm text-gray-700">{t('page') || 'Page'} {page} / {totalPages}</div>
+          <button
+            className="px-3 py-1 border rounded disabled:opacity-50"
+            onClick={() => loadPage(page + 1, perPage)}
+            disabled={page >= totalPages}
+          >
+            {t('next') || 'Next'}
+          </button>
+        </div>
+      </div>
 
       <Modal
         isOpen={isModalOpen}

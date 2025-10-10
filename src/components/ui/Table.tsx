@@ -27,8 +27,8 @@ export function Table<T extends Record<string, any>>({
 }: TableProps<T>) {
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
-  const itemsPerPage = 10;
-  const { dir } = useLocale();
+  const itemsPerPage = 5;
+  const { dir, t } = useLocale();
 
   const filteredData = searchable
     ? data.filter((item) =>
@@ -53,13 +53,13 @@ export function Table<T extends Record<string, any>>({
             />
             <input
               type="text"
-              placeholder={searchPlaceholder}
+              placeholder={searchPlaceholder || t('search') || 'Search...'}
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
                 setCurrentPage(1);
               }}
-              className={`w-full ${dir === 'rtl' ? 'pr-10' : 'pl-10'} pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00A86B] focus:border-transparent`}
+              className={`w-full ${dir === 'rtl' ? 'pl-4 pr-10' : 'pl-10 pr-4'} py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00A86B] focus:border-transparent`}
             />
           </div>
         </div>
@@ -83,7 +83,7 @@ export function Table<T extends Record<string, any>>({
             {paginatedData.length === 0 ? (
               <tr>
                 <td colSpan={columns.length} className="px-6 py-8 text-center text-gray-500">
-                  No data found
+                  {t('no_data_found') || 'No data found'}
                 </td>
               </tr>
             ) : (

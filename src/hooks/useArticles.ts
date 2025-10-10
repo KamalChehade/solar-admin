@@ -12,11 +12,20 @@ export default function useArticles() {
   /* -----------------------------------------------
      FETCH LIST (Paginated)
   ------------------------------------------------ */
-  const fetch = useCallback(async (limit = 20, offset = 0) => {
+  // remember last used pagination params so create/update/delete can refresh current page
+  const lastParams = { limit: 20, offset: 0 } as { limit: number; offset: number };
+
+  const fetch = useCallback(async (limit?: number, offset?: number) => {
+    const l = typeof limit === 'number' ? limit : lastParams.limit;
+    const o = typeof offset === 'number' ? offset : lastParams.offset;
+    // update remembered params
+    lastParams.limit = l;
+    lastParams.offset = o;
+
     setLoading(true);
     setError(null);
     try {
-      const res: ArticleListResult = await articlesApi.list(limit, offset);
+      const res: ArticleListResult = await articlesApi.list(l, o);
       setArticles(res.rows || []);
       setCount(res.count || 0);
       return res;

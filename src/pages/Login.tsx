@@ -104,7 +104,7 @@ export const Login: React.FC = () => {
         </div>
 
         <div className="mt-6 text-center text-white/80 text-sm">
-          © 2025 Quantum Solar Energy — All rights reserved.
+          © 2025 Quantum Trading co — All rights reserved.
         </div>
       </div>
     </div>
