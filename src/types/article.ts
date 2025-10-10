@@ -1,3 +1,4 @@
+
 export type ArticleTranslation = {
   id: number;
   articleId: number;
@@ -5,13 +6,13 @@ export type ArticleTranslation = {
   title: string;
   excerpt: string;
   content: string;
+  author?: string | null;  
 };
 
 export type Article = {
   id: number;
   cover_image?: string | null;
   video_url?: string | null;
-  author?: string | null;
   categoryId: number;
   published_date?: string | null;
   reading_time?: number | null;
@@ -25,5 +26,3 @@ export type ArticleListResult = {
   rows: Article[];
   count: number;
 };
-
-export default Article;

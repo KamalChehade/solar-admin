@@ -43,7 +43,7 @@ export const Categories: React.FC = () => {
         if (existingSecondary) combined.push({ lang: primaryLang === 'en' ? 'ar' : 'en', name: existingSecondary });
         // update primary (and keep any existing secondary)
         await update(Number(editingCategory.id), { translations: combined });
-        showToast('Category updated successfully', 'success');
+  showToast(t('category_updated') || 'Category updated successfully', 'success');
         // instead of closing, open the secondary-language modal (same flow as Add)
         setIsModalOpen(false);
         setIsArModalOpen(true);
@@ -72,7 +72,7 @@ export const Categories: React.FC = () => {
       } else {
         // create and then open Arabic modal to allow user to add Arabic translation
         const created = await create({ translations });
-        showToast('Category created successfully', 'success');
+  showToast(t('category_created') || 'Category created successfully', 'success');
         // created may be the new category object; set it for updating later
         if (created && created.id) {
           setEditingCategory(created as any);
@@ -137,7 +137,7 @@ export const Categories: React.FC = () => {
         const translations = [{ lang: primaryLang, name: formName }];
         if (arName && arName.trim()) translations.push({ lang: secondaryLang, name: arName });
         await create({ translations });
-        showToast('Category created successfully', 'success');
+  showToast(t('category_created') || 'Category created successfully', 'success');
       }
 
       setIsArModalOpen(false);
@@ -146,7 +146,7 @@ export const Categories: React.FC = () => {
       setArName('');
       await fetch();
     } catch (error) {
-      showToast('Error saving category', 'error');
+      showToast(t('error_saving') || 'Error saving category', 'error');
     } finally {
       setIsSaving(false);
     }
@@ -192,12 +192,12 @@ export const Categories: React.FC = () => {
     if (!deletingCategory) return;
     try {
       await remove(Number(deletingCategory.id));
-      showToast('Category deleted successfully', 'success');
+  showToast(t('category_deleted') || 'Category deleted successfully', 'success');
       setIsDeleteModalOpen(false);
       setDeletingCategory(null);
       await fetch();
     } catch (error) {
-      showToast('Error deleting category', 'error');
+  showToast(t('error_deleting') || 'Error deleting category', 'error');
     }
   };
 
@@ -294,7 +294,7 @@ export const Categories: React.FC = () => {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={editingCategory ? (t('edit_category') || 'Edit Category') : (t('add_category') || 'Add Category')}
+  title={editingCategory ? (t('edit_category') || 'Edit Category') : (t('add_category') || 'Add Category')}
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input
@@ -351,13 +351,12 @@ export const Categories: React.FC = () => {
       <Modal
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
-        title="Delete Category"
+  title={t('delete') || 'Delete'}
         size="sm"
       >
         <div className="space-y-4">
           <p className="text-gray-600">
-            Are you sure you want to delete <strong>{deletingCategory?.translations?.find((tr: any) => tr.lang === lang)?.name || deletingCategory?.translations?.find((tr: any) => tr.lang === 'en')?.name || '-'}</strong>? This action cannot
-            be undone.
+            {t('are_you_sure_delete') || 'Are you sure you want to delete'} <strong>{deletingCategory?.translations?.find((tr: any) => tr.lang === lang)?.name || deletingCategory?.translations?.find((tr: any) => tr.lang === 'en')?.name || '-'}</strong>? {t('will_permanently_remove') || 'This will permanently remove the item and all associated data.'}
           </p>
           <div className="flex gap-3 justify-end">
             <Button variant="secondary" onClick={() => setIsDeleteModalOpen(false)}>

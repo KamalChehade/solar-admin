@@ -60,7 +60,7 @@ export const Users: React.FC = () => {
           .update({ name: formData.name, role: formData.role })
           .eq('id', editingUser.id);
 
-        if (error) throw error;
+    if (error) throw error;
   showToast(t('user_updated') || 'User updated successfully', 'success');
       } else {
         const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -208,7 +208,7 @@ export const Users: React.FC = () => {
           </div>
           <div>
             <h1 className="text-3xl font-bold text-gray-900">{t('users_management')}</h1>
-              <p className="text-gray-600">Manage admin and publisher accounts</p>
+            <p className="text-gray-600">{t('manage_admin_publisher') || 'Manage admin and publisher accounts'}</p>
           </div>
         </div>
         <Button onClick={openCreateModal} className="gap-2">
@@ -267,7 +267,7 @@ export const Users: React.FC = () => {
       <Modal
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
-        title={t('delete_user') || 'Delete User'}
+        title={t('delete') || 'Delete'}
         size="sm"
       >
         <div className="space-y-4">
